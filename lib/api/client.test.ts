@@ -4,6 +4,37 @@ import { ApiError, createApiClient, normalizeVendorAnalyticsResponse } from "./c
 
 const fetchMock = vi.fn();
 
+const escrow = {
+  id: "e1",
+  vendorId: "v1",
+  amount: 10,
+  item: "Item",
+  status: "PENDING",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  history: [],
+};
+
+const dispute = {
+  id: "d1",
+  escrowId: "e1",
+  escrow,
+  buyerId: "b1",
+  reason: "Missing item",
+  evidence: [],
+  status: "OPEN",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+
+const tracking = {
+  escrowId: "e1",
+  status: "IN_TRANSIT",
+  carrier: "GIGL",
+  trackingNumber: "track-1",
+  events: [],
+};
+
 function mockResponse(body: unknown, { ok = true, status = 200, statusText = "OK" }: { ok?: boolean; status?: number; statusText?: string } = {}) {
   return {
     ok,
@@ -41,7 +72,7 @@ describe("api client", () => {
   );
 
   it("injects the auth header automatically from the client token", async () => {
-    fetchMock.mockResolvedValueOnce(mockResponse({ ok: true }));
+    fetchMock.mockResolvedValueOnce(mockResponse(escrow));
 
     const client = createApiClient("jwt-123");
     await client.getEscrow("e1");
@@ -61,11 +92,19 @@ describe("api client", () => {
 
   it("supports the dispute and shipping helpers", async () => {
     fetchMock
-      .mockResolvedValueOnce(mockResponse({ id: "d1" }))
-      .mockResolvedValueOnce(mockResponse({ escrowId: "e1" }));
+      .mockResolvedValueOnce(mockResponse(dispute))
+      .mockResolvedValueOnce(mockResponse(tracking));
 
     const client = createApiClient("jwt-456");
-    await expect(client.createDispute("e1", { reason: "late", description: "late", evidence: ["a"] })).resolves.toEqual({ id: "d1" });
-    await expect(client.shipEscrow("e1", { trackingId: "t1", carrier: "UPS" })).resolves.toEqual({ escrowId: "e1" });
+    await expect(client.createDispute("e1", { reason: "late", description: "late", evidence: ["a"] })).resolves.toMatchObject({ id: "d1" });
+    await expect(client.shipEscrow("e1", { trackingId: "t1", carrier: "UPS" })).resolves.toMatchObject({ escrowId: "e1" });
+  });
+
+  it("rejects a successful response with an invalid escrow shape", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ id: "e1" }));
+
+    await expect(createApiClient().getEscrow("e1")).rejects.toThrow(
+      "Invalid API response for /escrow/e1: unexpected response shape"
+    );
   });
 });

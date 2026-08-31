@@ -1,12 +1,11 @@
-import {
+import type {
   Dispute,
-  DisputeStatusConst,
   Escrow,
   Subscription,
   Tracking,
-  type VendorAnalyticsApiResponse,
-  type VendorAnalyticsResponse,
-  type VendorNotificationPreferences,
+  VendorAnalyticsApiResponse,
+  VendorAnalyticsResponse,
+  VendorNotificationPreferences,
 } from "@/types";
 import type {
   ApiErrorResponse,
@@ -29,6 +28,12 @@ import type {
   ShipEscrowResponse,
   UpgradeSubscriptionResponse,
 } from "@/types/api";
+import {
+  isDispute,
+  isEscrow,
+  isSubscription,
+  isTracking,
+} from "@/types/guards";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -77,7 +82,14 @@ async function parseError(res: Response): Promise<ApiError> {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
+type ResponseGuard<T> = (value: unknown) => value is T;
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  token?: string,
+  validate?: ResponseGuard<T>
+): Promise<T> {
   const headers = new Headers(init.headers ?? {});
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -89,7 +101,17 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
   }
 
   const text = await res.text();
-  return text ? (JSON.parse(text) as T) : (undefined as unknown as T);
+  let response: unknown;
+  try {
+    response = text ? JSON.parse(text) : undefined;
+  } catch {
+    throw new Error(`Invalid API response for ${path}: malformed JSON`);
+  }
+  if (validate && !validate(response)) {
+    throw new Error(`Invalid API response for ${path}: unexpected response shape`);
+  }
+
+  return response as T;
 }
 
 export function normalizeVendorAnalyticsResponse(
@@ -125,10 +147,10 @@ export async function createEscrow(data: EscrowInput, token?: string): Promise<C
  */
 export async function getEscrow(id: string, token?: string): Promise<GetEscrowResponse> {
   try {
-    return await request<GetEscrowResponse>(`/escrow/${id}`, {}, token);
+    return await request<GetEscrowResponse>(`/escrow/${id}`, {}, token, isEscrow);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      return request<GetEscrowResponse>(`/escrows/${id}`, {}, token);
+      return request<GetEscrowResponse>(`/escrows/${id}`, {}, token, isEscrow);
     }
     throw error;
   }
@@ -141,7 +163,9 @@ export async function getEscrow(id: string, token?: string): Promise<GetEscrowRe
  * @returns Promise resolving to the vendor's list of escrows.
  */
 export async function getVendorEscrows(token?: string): Promise<GetVendorEscrowsResponse> {
-  return request<GetVendorEscrowsResponse>("/vendor/escrows", {}, token);
+  return request<GetVendorEscrowsResponse>("/vendor/escrows", {}, token, (value): value is GetVendorEscrowsResponse =>
+    Array.isArray(value) && value.every(isEscrow)
+  );
 }
 
 /**
@@ -152,7 +176,7 @@ export async function getVendorEscrows(token?: string): Promise<GetVendorEscrows
  * @returns Promise resolving to dispute details.
  */
 export async function getDispute(id: string, token?: string): Promise<GetDisputeResponse> {
-  return request<GetDisputeResponse>(`/disputes/${id}`, {}, token);
+  return request<GetDisputeResponse>(`/disputes/${id}`, {}, token, isDispute);
 }
 
 /**
@@ -162,7 +186,9 @@ export async function getDispute(id: string, token?: string): Promise<GetDispute
  * @returns Promise resolving to filtered list of active disputes.
  */
 export async function getAdminDisputes(token?: string): Promise<GetDisputesResponse> {
-  const disputes = await request<GetDisputesResponse>("/disputes?status=OPEN,UNDER_REVIEW", {}, token);
+  const disputes = await request<GetDisputesResponse>("/disputes?status=OPEN,UNDER_REVIEW", {}, token, (value): value is GetDisputesResponse =>
+    Array.isArray(value) && value.every(isDispute)
+  );
   return disputes.filter((dispute) => dispute.status === "OPEN" || dispute.status === "UNDER_REVIEW");
 }
 
@@ -179,7 +205,7 @@ export async function resolveDispute(id: string, resolution: "RELEASE_TO_VENDOR"
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resolution }),
-  }, token);
+  }, token, isDispute);
 }
 
 /**
@@ -195,7 +221,7 @@ export async function createDispute(escrowId: string, data: CreateDisputeInput, 
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  }, token);
+  }, token, isDispute);
 }
 
 /**
@@ -211,7 +237,7 @@ export async function shipEscrow(escrowId: string, data: ShipEscrowInput, token?
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  }, token);
+  }, token, isTracking);
 }
 
 /**
@@ -222,7 +248,7 @@ export async function shipEscrow(escrowId: string, data: ShipEscrowInput, token?
  * @returns Promise resolving to tracking details.
  */
 export async function getTracking(escrowId: string, token?: string): Promise<GetTrackingResponse> {
-  return request<GetTrackingResponse>(`/escrows/${escrowId}/tracking`, {}, token);
+  return request<GetTrackingResponse>(`/escrows/${escrowId}/tracking`, {}, token, isTracking);
 }
 
 /**
@@ -232,7 +258,7 @@ export async function getTracking(escrowId: string, token?: string): Promise<Get
  * @returns Promise resolving to subscription response.
  */
 export async function getSubscription(token?: string): Promise<GetSubscriptionResponse> {
-  return request<GetSubscriptionResponse>("/subscription", {}, token);
+  return request<GetSubscriptionResponse>("/subscription", {}, token, isSubscription);
 }
 
 /**
@@ -245,7 +271,7 @@ export async function upgradeSubscription(token?: string): Promise<UpgradeSubscr
   return request<UpgradeSubscriptionResponse>("/subscription/upgrade", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-  }, token);
+  }, token, isSubscription);
 }
 
 /**
@@ -338,7 +364,9 @@ export async function getVendorProfile(vendorId: string): Promise<GetVendorProfi
 export async function getPublicVendorEscrows(
   vendorId: string
 ): Promise<GetPublicVendorEscrowsResponse> {
-  return request<GetPublicVendorEscrowsResponse>(`/vendor/${encodeURIComponent(vendorId)}/escrows`);
+  return request<GetPublicVendorEscrowsResponse>(`/vendor/${encodeURIComponent(vendorId)}/escrows`, {}, undefined, (value): value is GetPublicVendorEscrowsResponse =>
+    Array.isArray(value) && value.every(isEscrow)
+  );
 }
 
 /**
