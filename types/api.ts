@@ -18,6 +18,7 @@ import type {
   EscrowStatus,
   Subscription,
   Tracking,
+  VendorAnalyticsApiResponse,
   VendorAnalyticsResponse,
   VendorNotificationPreferences,
   VendorProfile,
@@ -140,7 +141,10 @@ export type UpgradeSubscriptionResponse = Subscription;
 /** `GET /vendor/notifications`. */
 export type GetVendorNotificationPreferencesResponse = VendorNotificationPreferences;
 
-/** `GET /vendor/analytics`. */
+/** Raw `GET /vendor/analytics` response before client-side normalization. */
+export type GetVendorAnalyticsApiResponse = VendorAnalyticsApiResponse;
+
+/** Normalized `GET /vendor/analytics` response exposed to consumers. */
 export type GetVendorAnalyticsResponse = VendorAnalyticsResponse;
 
 /** `GET /vendor/:id/profile` — public vendor profile, no auth required. */

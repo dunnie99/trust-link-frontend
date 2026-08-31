@@ -4,6 +4,7 @@ import {
   Escrow,
   Subscription,
   Tracking,
+  type VendorAnalyticsApiResponse,
   type VendorAnalyticsResponse,
   type VendorNotificationPreferences,
 } from "@/types";
@@ -19,6 +20,7 @@ import type {
   GetPublicVendorEscrowsResponse,
   GetSubscriptionResponse,
   GetTrackingResponse,
+  GetVendorAnalyticsApiResponse,
   GetVendorAnalyticsResponse,
   GetVendorEscrowsResponse,
   GetVendorNotificationPreferencesResponse,
@@ -88,6 +90,15 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 
   const text = await res.text();
   return text ? (JSON.parse(text) as T) : (undefined as unknown as T);
+}
+
+export function normalizeVendorAnalyticsResponse(
+  response: VendorAnalyticsApiResponse
+): VendorAnalyticsResponse {
+  return {
+    ...response,
+    dataPoints: response.dailyMetrics ?? response.series ?? response.data ?? [],
+  };
 }
 
 /**
@@ -302,7 +313,8 @@ export async function patchBuyerContact(
  * @returns Promise resolving to vendor analytics payload.
  */
 export async function getVendorAnalytics(token?: string): Promise<GetVendorAnalyticsResponse> {
-  return request<GetVendorAnalyticsResponse>("/vendor/analytics", {}, token);
+  const response = await request<GetVendorAnalyticsApiResponse>("/vendor/analytics", {}, token);
+  return normalizeVendorAnalyticsResponse(response);
 }
 
 /**

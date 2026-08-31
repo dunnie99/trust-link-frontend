@@ -46,7 +46,12 @@ export {
 } from "@/lib/api/client";
 
 // Re-export types that were historically defined here but now live in @/types
-export type { VendorAnalyticsPoint, VendorAnalyticsResponse,VendorNotificationPreferences } from "@/types";
+export type {
+  VendorAnalyticsApiResponse,
+  VendorAnalyticsPoint,
+  VendorAnalyticsResponse,
+  VendorNotificationPreferences,
+} from "@/types";
 
 /**
  * BuyerContactInput — kept for backward-compatibility.

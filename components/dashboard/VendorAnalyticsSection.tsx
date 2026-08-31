@@ -138,7 +138,7 @@ export default function VendorAnalyticsSection() {
   }, [router, t]);
 
   const chartData = useMemo(() => {
-    return analytics?.dailyMetrics ?? analytics?.series ?? analytics?.data ?? [];
+    return analytics?.dataPoints ?? [];
   }, [analytics]);
 
   const metrics = pickMetrics(analytics, chartData);
@@ -262,7 +262,7 @@ export default function VendorAnalyticsSection() {
                 {t("dashboard.analyticsPage.noPoints")}
               </div>
             ) : (
-              <VendorAnalyticsChart data={chartData} isMobile={isMobile} />
+              <VendorAnalyticsChart dataPoints={chartData} isMobile={isMobile} />
             )}
           </div>
         </section>

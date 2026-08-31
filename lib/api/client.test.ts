@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, createApiClient } from "./client";
+import { ApiError, createApiClient, normalizeVendorAnalyticsResponse } from "./client";
 
 const fetchMock = vi.fn();
 
@@ -23,6 +23,23 @@ afterEach(() => {
 });
 
 describe("api client", () => {
+  it.each(["dailyMetrics", "series", "data"] as const)(
+    "normalizes analytics %s into dataPoints",
+    (field) => {
+      const point = {
+        date: "2026-01-01",
+        transactionVolume: 10,
+        averageOrderValue: 5,
+        completionRate: 1,
+        disputeRate: 0,
+      };
+
+      expect(normalizeVendorAnalyticsResponse({ [field]: [point] })).toMatchObject({
+        dataPoints: [point],
+      });
+    }
+  );
+
   it("injects the auth header automatically from the client token", async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ ok: true }));
 

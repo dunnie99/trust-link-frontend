@@ -54,7 +54,7 @@ export default function DashboardAnalyticsSummary() {
   }, []);
 
   const chartData = useMemo(() => {
-    return analytics?.dailyMetrics ?? analytics?.series ?? analytics?.data ?? [];
+    return analytics?.dataPoints ?? [];
   }, [analytics]);
 
   if (isLoading) {
@@ -71,7 +71,7 @@ export default function DashboardAnalyticsSummary() {
 
   return (
     <div className="h-[250px] w-full">
-      <VendorAnalyticsChart data={chartData} isMobile={isMobile} />
+      <VendorAnalyticsChart dataPoints={chartData} isMobile={isMobile} />
     </div>
   );
 }
