@@ -1,8 +1,9 @@
 "use client";
 
-import React, { FormEvent, useEffect, useRef,useState } from "react";
+import React, { FormEvent, useRef,useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { shipEscrow } from "@/lib/api";
 import type { ApiErrorResponse } from "@/types/api";
 
@@ -28,43 +29,7 @@ export default function ShipTrackingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Close on Escape & Trap Focus
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!open) return;
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-
-      if (e.key === "Tab" && modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll(
-          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        const first = focusable[0] as HTMLElement;
-        const last = focusable[focusable.length - 1] as HTMLElement;
-
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            last.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === last) {
-            first.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    }
-    if (open) {
-      document.addEventListener("keydown", onKey);
-      // Auto-focus first element
-      const first = modalRef.current?.querySelector('button, input, select') as HTMLElement;
-      first?.focus();
-    }
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useFocusTrap(modalRef, open, { onEscape: onClose, autoFocus: true });
 
   if (!open) {
     return null;
