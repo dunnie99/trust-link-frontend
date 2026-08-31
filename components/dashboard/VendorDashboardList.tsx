@@ -329,7 +329,7 @@ export default function VendorDashboardList({
         )}
       </div>
 
-      {filteredEscrows!.length === 0 ? (
+      {(filteredEscrows?.length ?? 0) === 0 ? (
         <div className="rounded-3xl border border-dashed border-zinc-200 py-12 text-center dark:border-zinc-800">
           <p className="text-zinc-500 dark:text-zinc-400">
             {t("dashboard.noEscrowsFound")}
@@ -366,7 +366,7 @@ export default function VendorDashboardList({
         </div>
       )}
 
-      {filteredEscrows!.length > 0 && totalPages > 1 && (
+      {(filteredEscrows?.length ?? 0) > 0 && totalPages > 1 && (
         <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-6 dark:border-zinc-800">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {t("dashboard.showingPage")} {" "}
